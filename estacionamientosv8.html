@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estacionamientos Dieciocho 390</title>
+<script>
+  try {
+    var t = localStorage.getItem("estacionamientos_tema");
+    if (t === "dark" || t === "light") document.documentElement.setAttribute("data-theme", t);
+  } catch (e) {}
+</script>
+<style>
+  :root {
+    --bg: #f4f6fb;
+    --surface: #ffffff;
+    --text: #1b2333;
+    --muted: #6b7690;
+    --border: #e3e8f2;
+    --free: #16a34a;
+    --free-bg: #e8f7ee;
+    --busy: #dc2626;
+    --accent: #3b5bdb;
+    --shadow: 0 1px 2px rgba(20,30,60,.06), 0 6px 20px rgba(20,30,60,.06);
+    --radius: 14px;
+  }
+  :root { color-scheme: light; }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #0e1220;
+    --surface: #171c2e;
+    --text: #e8ecf7;
+    --muted: #8c97b3;
+    --border: #263050;
+    --free: #34d399;
+    --free-bg: #12261f;
+    --busy: #ef4444;
+    --accent: #748ffc;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #0e1220;
+      --surface: #171c2e;
+      --text: #e8ecf7;
+      --muted: #8c97b3;
+      --border: #263050;
+      --free: #34d399;
+      --free-bg: #12261f;
+      --busy: #ef4444;
+      --accent: #748ffc;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; padding: 24px 16px 48px;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+
+  header { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  h1 { font-size: 1.6rem; letter-spacing: -.02em; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .btn {
+    font: inherit; font-size: .88rem; font-weight: 600;
+    padding: 9px 14px; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    transition: transform .12s, border-color .12s;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn:active { transform: scale(.97); }
+  .btn.danger { color: var(--busy); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px; }
+  .stat .label { color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; }
+  .stat .value { font-size: 2rem; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .stat.free .value { color: var(--free); }
+  .stat.busy .value { color: var(--busy); }
+
+  .progress { margin-bottom: 16px; }
+  .progress-top { display: flex; justify-content: space-between; font-size: .9rem; }
+  .bar { height: 10px; background: var(--free-bg); border-radius: 99px; overflow: hidden; margin-top: 10px; }
+  .bar > span { display: block; height: 100%; width: 0; background: var(--busy); border-radius: 99px; transition: width .35s ease; }
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+  .search {
+    flex: 1 1 240px; min-width: 200px; font: inherit; font-size: .92rem;
+    padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text);
+  }
+  .search:focus, .field input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .seg { display: inline-flex; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 3px; }
+  .seg button { font: inherit; font-size: .85rem; font-weight: 600; border: 0; background: transparent; color: var(--muted); padding: 7px 14px; border-radius: 8px; cursor: pointer; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .85rem; color: var(--muted); width: 100%; align-items: center; }
+  .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  .today { margin-left: auto; font-weight: 600; color: var(--text); background: var(--surface); border: 1px solid var(--border); padding: 4px 10px; border-radius: 99px; text-transform: capitalize; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 10px; }
+  .spot {
+    position: relative; min-height: 104px;
+    border-radius: 12px; border: 2px solid var(--free);
+    background: var(--free-bg); color: var(--free);
+    transition: transform .12s, background .2s, border-color .2s, color .2s, box-shadow .2s;
+  }
+  .spot:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+  .spot.busy { background: var(--busy); border-color: var(--busy); color: #fff; }
+  .spot.hidden { display: none; }
+  .spot .main {
+    appearance: none; font: inherit; color: inherit; background: transparent; border: 0; cursor: pointer;
+    width: 100%; height: 100%; min-height: 100px; padding: 10px 8px 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    border-radius: 10px; user-select: none; text-align: center;
+  }
+  .spot .main:active { transform: scale(.96); }
+  .spot .main:focus-visible, .spot .edit:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .num { font-size: 1.35rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .who { font-size: .78rem; font-weight: 600; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-height: 1em; color: var(--text); }
+  .spot.busy .who { color: #fff; }
+  .plate { font-size: .72rem; font-family: ui-monospace, Menlo, Consolas, monospace; letter-spacing: .06em; opacity: .85; min-height: 1em; color: var(--muted); }
+  .spot.busy .plate { color: #fff; opacity: .9; }
+  .tag { font-size: .62rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; margin-top: 2px; }
+  .spot .edit {
+    position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; border-radius: 8px;
+    border: 0; cursor: pointer; font-size: .9rem; line-height: 1;
+    background: rgba(120,130,160,.16); color: inherit; opacity: .75;
+  }
+  .spot .edit:hover { opacity: 1; background: rgba(120,130,160,.3); }
+  .chip {
+    position: absolute; top: 6px; left: 7px; font-size: .58rem; font-weight: 700; letter-spacing: .05em;
+    text-transform: uppercase; padding: 2px 6px; border-radius: 6px;
+    background: var(--accent); color: #fff; display: none; max-width: calc(100% - 44px); white-space: nowrap; overflow: hidden;
+  }
+  .spot.fixed .chip { display: block; }
+  .spot.fixed.offday:not(.busy) .chip { background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 1px 5px; }
+  .empty { text-align: center; color: var(--muted); padding: 40px 0; display: none; }
+
+  dialog {
+    border: 1px solid var(--border); border-radius: 16px; padding: 0; width: min(440px, calc(100vw - 32px));
+    background: var(--surface); color: var(--text); box-shadow: 0 20px 60px rgba(0,0,0,.35);
+  }
+  dialog::backdrop { background: rgba(10,14,28,.55); }
+  .dlg { padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+  .dlg h2 { font-size: 1.2rem; }
+  .dlg .hint { color: var(--muted); font-size: .85rem; margin-top: -6px; }
+  .tabs { display: flex; background: var(--bg); border-radius: 10px; padding: 3px; }
+  .tabs button { flex: 1; font: inherit; font-size: .85rem; font-weight: 600; border: 0; background: transparent; color: var(--muted); padding: 8px; border-radius: 8px; cursor: pointer; }
+  .tabs button.on { background: var(--accent); color: #fff; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: .78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .field input { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); color: var(--text); width: 100%; }
+  .field input.plate-in { font-family: ui-monospace, Menlo, Consolas, monospace; text-transform: uppercase; letter-spacing: .08em; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .days { display: flex; gap: 6px; }
+  .days button {
+    flex: 1; font: inherit; font-size: .85rem; font-weight: 700; padding: 9px 0; border-radius: 10px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg); color: var(--muted);
+  }
+  .days button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .days-hint { font-size: .78rem; color: var(--muted); }
+  .dlg-actions { display: flex; gap: 8px; justify-content: space-between; margin-top: 4px; }
+  .dlg-actions .right { display: flex; gap: 8px; }
+
+  .swal2-popup { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 16px; font-family: inherit; }
+  .swal2-title { color: var(--text); font-size: 1.3rem; }
+  .swal2-html-container { color: var(--muted); }
+  .swal2-styled { border-radius: 10px !important; font-weight: 600; }
+  .swal2-popup.swal2-toast { background: var(--surface) !important; color: var(--text) !important; border: 1px solid var(--border); box-shadow: var(--shadow); padding: .8em 1em; }
+  .swal2-toast .swal2-title { color: var(--text) !important; font-size: .95rem; font-weight: 600; margin: 0 .7em; }
+  .swal2-toast .swal2-html-container { color: var(--muted) !important; }
+  .swal2-icon.swal2-success [class^="swal2-success-circular-line"],
+  .swal2-icon.swal2-success .swal2-success-fix { background: transparent !important; }
+
+  @media (max-width: 640px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; }
+    .today { margin-left: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Estacionamientos Dieciocho 390 · Campus Central</h1>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btn-theme" title="Cambiar entre modo claro y oscuro"></button>
+      <button class="btn" id="btn-export" title="Descargar respaldo en Excel">Exportar Excel</button>
+      <button class="btn" id="btn-import" title="Cargar datos desde un Excel">Importar Excel</button>
+      <button class="btn" id="btn-free-all">Liberar todos</button>
+      <input type="file" id="file-import" accept=".xlsx,.xls,.csv" hidden>
+    </div>
+  </header>
+
+  <section class="stats">
+    <div class="card stat"><div class="label">Total</div><div class="value" id="s-total">88</div></div>
+    <div class="card stat free"><div class="label">Libres</div><div class="value" id="s-free">88</div></div>
+    <div class="card stat busy"><div class="label">Ocupados</div><div class="value" id="s-busy">0</div></div>
+    <div class="card stat"><div class="label">Asignados fijos</div><div class="value" id="s-fixed">0</div></div>
+  </section>
+
+  <section class="card progress">
+    <div class="progress-top"><span>Ocupación</span><b id="pct">0%</b></div>
+    <div class="bar"><span id="bar"></span></div>
+  </section>
+
+  <div class="toolbar">
+    <input class="search" id="search" type="search" placeholder="Buscar por número, nombre, patente o celular…" autocomplete="off">
+    <div class="seg" id="filters">
+      <button class="on" data-f="all">Todos</button>
+      <button data-f="free">Libres</button>
+      <button data-f="busy">Ocupados</button>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--free-bg);border:2px solid var(--free)"></i>Libre</span>
+      <span><i style="background:var(--busy)"></i>Ocupado</span>
+      <span><i style="background:var(--accent)"></i>Titular fijo</span>
+      <span class="today" id="today"></span>
+    </div>
+  </div>
+
+  <main class="grid" id="grid" aria-label="Estacionamientos"></main>
+  <p class="empty" id="empty">No hay estacionamientos que coincidan.</p>
+</div>
+
+<dialog id="dlg">
+  <form class="dlg" id="form" method="dialog">
+    <h2 id="dlg-title">Estacionamiento</h2>
+    <p class="hint" id="dlg-hint"></p>
+    <div class="tabs" id="tabs">
+      <button type="button" data-t="owner">Titular fijo</button>
+      <button type="button" data-t="guest">Visita / esporádico</button>
+    </div>
+    <div class="field"><label for="f-name">Nombre</label><input id="f-name" autocomplete="off" placeholder="Ej: María Pérez"></div>
+    <div class="row2">
+      <div class="field"><label for="f-plate">Patente</label><input id="f-plate" class="plate-in" autocomplete="off" placeholder="ABCD-12" maxlength="10"></div>
+      <div class="field"><label for="f-phone">Celular</label><input id="f-phone" type="tel" inputmode="tel" autocomplete="off" placeholder="+56 9 1234 5678"></div>
+    </div>
+    <div class="field" id="days-field">
+      <label>Días asignados</label>
+      <div class="days" id="days">
+        <button type="button" data-d="1">L</button>
+        <button type="button" data-d="2">M</button>
+        <button type="button" data-d="3">X</button>
+        <button type="button" data-d="4">J</button>
+        <button type="button" data-d="5">V</button>
+        <button type="button" data-d="6">S</button>
+        <button type="button" data-d="0">D</button>
+      </div>
+      <span class="days-hint" id="days-hint"></span>
+    </div>
+    <div class="dlg-actions">
+      <button type="button" class="btn danger" id="f-clear">Quitar</button>
+      <div class="right">
+        <button type="button" class="btn" id="f-cancel">Cancelar</button>
+        <button type="submit" class="btn primary">Guardar</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+(function () {
+  var TOTAL = 88;
+  var KEY = "estacionamientos_v2";
+  var OLD_KEY = "estacionamientos_v1";
+  var data = {};   // { "12": { busy, owner:{name,plate,phone,days:[1,3,5]}, guest:{name,plate,phone} } }
+  var filter = "all";
+  var query = "";
+
+  var DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];                      // lunes primero
+  var DAY_LETTER = { 0: "D", 1: "L", 2: "M", 3: "X", 4: "J", 5: "V", 6: "S" };
+  var DAY_NAME = { 0: "Dom", 1: "Lun", 2: "Mar", 3: "Mié", 4: "Jue", 5: "Vie", 6: "Sáb" };
+
+  // ---- carga / guardado ----
+  try {
+    var raw = localStorage.getItem(KEY);
+    if (raw) data = JSON.parse(raw) || {};
+    else {
+      var old = localStorage.getItem(OLD_KEY);   // migrar versión anterior
+      if (old) {
+        var o = JSON.parse(old) || {};
+        for (var k in o) if (o[k]) data[k] = { busy: true };
+      }
+    }
+  } catch (e) { data = {}; }
+
+  function save() {
+    for (var k in data) {
+      var s = data[k];
+      if (!s.busy && !s.owner && !s.guest) delete data[k];
+    }
+    try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
+  }
+  function sp(n) { return data[n] || (data[n] = {}); }
+  // Formato de patente: AAAA-12 (autos) y AAA-12 (motos); también acepta el antiguo AA-1234
+  function normPlate(p) {
+    var clean = (p || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    var m = clean.match(/^([A-Z]{0,4})([0-9]*)/);
+    var L = m[1], D = m[2].slice(0, L.length === 2 ? 4 : 2);
+    return D ? (L ? L + "-" + D : D) : L;
+  }
+  function plateKey(p) { return (p || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
+  function normPhone(p) { return (p || "").replace(/[^\d+\s]/g, "").replace(/\s+/g, " ").trim(); }
+  function digits(p) { return (p || "").replace(/\D/g, ""); }
+
+  // ---- días ----
+  function sortDays(arr) { return DAY_ORDER.filter(function (d) { return arr.indexOf(d) !== -1; }); }
+  function daysLetters(arr) { return sortDays(arr).map(function (d) { return DAY_LETTER[d]; }).join(" "); }
+  function daysText(arr) { return sortDays(arr).map(function (d) { return DAY_NAME[d]; }).join(", "); }
+  function parseDays(text) {
+    var out = [];
+    String(text || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .split(/[\s,;\/\-]+/).forEach(function (tok) {
+        if (!tok) return;
+        var d = null;
+        if (tok.length === 1) d = { l: 1, m: 2, x: 3, j: 4, v: 5, s: 6, d: 0 }[tok];
+        else d = { lu: 1, ma: 2, mi: 3, ju: 4, vi: 5, sa: 6, do: 0 }[tok.slice(0, 2)];
+        if (d !== undefined && d !== null && out.indexOf(d) === -1) out.push(d);
+      });
+    return out.length >= 7 ? [] : sortDays(out);
+  }
+  function assignedToday(o) {
+    if (!o) return false;
+    if (!o.days || !o.days.length) return true;      // sin días = todos los días
+    return o.days.indexOf(new Date().getDay()) !== -1;
+  }
+
+  // ---- construir cuadrícula ----
+  var grid = document.getElementById("grid");
+  var cells = [];
+  for (var i = 1; i <= TOTAL; i++) {
+    (function (n) {
+      var d = document.createElement("div");
+      d.className = "spot";
+      d.innerHTML =
+        '<span class="chip">Fijo</span>' +
+        '<button type="button" class="edit" title="Asignar nombre, patente y días" aria-label="Editar estacionamiento ' + n + '">✎</button>' +
+        '<button type="button" class="main">' +
+          '<span class="num">' + n + '</span>' +
+          '<span class="who"></span><span class="plate"></span><span class="tag"></span>' +
+        '</button>';
+      d.querySelector(".main").addEventListener("click", function () {
+        var s = sp(n);
+        s.busy = !s.busy;
+        if (!s.busy) delete s.guest;   // al liberar, la visita se borra; el titular fijo se mantiene
+        save(); render();
+      });
+      d.querySelector(".edit").addEventListener("click", function (e) {
+        e.stopPropagation(); openEditor(n);
+      });
+      grid.appendChild(d);
+      cells[n] = d;
+    })(i);
+  }
+
+  // ---- render ----
+  function matches(n, s) {
+    if (!query) return true;
+    var q = query.toLowerCase(), qp = plateKey(query), qd = digits(query);
+    if (String(n) === q) return true;
+    var hay = [String(n)];
+    ["owner", "guest"].forEach(function (t) {
+      if (s[t]) {
+        hay.push((s[t].name || "").toLowerCase());
+        hay.push(plateKey(s[t].plate));
+      }
+    });
+    if (hay.some(function (h) { return h.indexOf(q) !== -1 || (qp && h.indexOf(qp) !== -1); })) return true;
+    if (qd.length >= 3) {
+      return ["owner", "guest"].some(function (t) { return s[t] && digits(s[t].phone).indexOf(qd) !== -1; });
+    }
+    return false;
+  }
+
+  function tooltip(n, s, person) {
+    var lines = ["Estacionamiento " + n];
+    if (s.owner) {
+      lines.push("Titular: " + (s.owner.name || "—") + (s.owner.plate ? " · " + normPlate(s.owner.plate) : ""));
+      if (s.owner.phone) lines.push("Cel: " + s.owner.phone);
+      lines.push("Días: " + (s.owner.days && s.owner.days.length ? daysText(s.owner.days) : "todos"));
+    }
+    if (s.busy && s.guest) {
+      lines.push("Visita: " + (s.guest.name || "—") + (s.guest.plate ? " · " + normPlate(s.guest.plate) : ""));
+      if (s.guest.phone) lines.push("Cel: " + s.guest.phone);
+    }
+    return lines.join("\n");
+  }
+
+  function paintToday() {
+    document.getElementById("today").textContent = "Hoy: " +
+      new Date().toLocaleDateString("es-CL", { weekday: "long", day: "numeric", month: "long" });
+  }
+
+  function render() {
+    var busy = 0, fixed = 0, visible = 0;
+    for (var n = 1; n <= TOTAL; n++) {
+      var el = cells[n], s = data[n] || {}, isBusy = !!s.busy;
+      var ownerToday = assignedToday(s.owner);
+      if (isBusy) busy++;
+      if (s.owner) fixed++;
+
+      // quién se muestra: visita (si hay y está ocupado), si no el titular siempre que hoy le corresponda
+      var person = (isBusy && s.guest) ? s.guest : (ownerToday ? s.owner : null);
+      el.classList.toggle("busy", isBusy);
+      el.classList.toggle("fixed", !!s.owner);
+      el.classList.toggle("offday", !!s.owner && !ownerToday);
+      var chip = el.querySelector(".chip");
+      chip.textContent = s.owner && s.owner.days && s.owner.days.length ? daysLetters(s.owner.days) : "Fijo";
+      el.querySelector(".who").textContent = person && person.name ? person.name : "";
+      el.querySelector(".plate").textContent = person && person.plate ? normPlate(person.plate) : "";
+      el.querySelector(".tag").textContent = isBusy ? (s.guest ? "Visita" : "Ocupado")
+        : (s.owner && !ownerToday ? "Libre hoy" : "Libre");
+      var main = el.querySelector(".main");
+      main.setAttribute("aria-label",
+        "Estacionamiento " + n + (isBusy ? ", ocupado" : ", libre") + (person && person.name ? ", " + person.name : ""));
+      main.title = tooltip(n, s, person);
+
+      var show = (filter === "all" || (filter === "busy" && isBusy) || (filter === "free" && !isBusy)) && matches(n, s);
+      el.classList.toggle("hidden", !show);
+      if (show) visible++;
+    }
+    var free = TOTAL - busy, pct = Math.round(busy / TOTAL * 100);
+    document.getElementById("s-free").textContent = free;
+    document.getElementById("s-busy").textContent = busy;
+    document.getElementById("s-fixed").textContent = fixed;
+    document.getElementById("pct").textContent = pct + "%";
+    document.getElementById("bar").style.width = pct + "%";
+    document.getElementById("empty").style.display = visible ? "none" : "block";
+    paintToday();
+  }
+
+  // ---- editor ----
+  var dlg = document.getElementById("dlg");
+  var fName = document.getElementById("f-name");
+  var fPlate = document.getElementById("f-plate");
+  var fPhone = document.getElementById("f-phone");
+  var tabs = document.getElementById("tabs");
+  var daysBox = document.getElementById("days");
+  var curN = null, curTab = "owner", curDays = [];
+
+  function paintDays() {
+    var btns = daysBox.querySelectorAll("button");
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].classList.toggle("on", curDays.indexOf(parseInt(btns[i].getAttribute("data-d"), 10)) !== -1);
+    }
+    document.getElementById("days-hint").textContent = curDays.length
+      ? "Solo estos días: " + daysText(curDays) + ". Los demás días queda libre."
+      : "Sin días marcados = todos los días.";
+  }
+
+  function fillFields() {
+    var s = data[curN] || {};
+    var p = s[curTab] || {};
+    fName.value = p.name || "";
+    fPlate.value = normPlate(p.plate);
+    fPhone.value = p.phone || "";
+    curDays = (curTab === "owner" && p.days) ? p.days.slice() : [];
+    document.getElementById("days-field").style.display = curTab === "owner" ? "" : "none";
+    paintDays();
+    document.getElementById("dlg-hint").textContent = curTab === "owner"
+      ? "Queda guardado de forma permanente en este espacio."
+      : "Solo mientras esté ocupado; se borra al liberar el espacio.";
+    var btns = tabs.querySelectorAll("button");
+    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle("on", btns[i].getAttribute("data-t") === curTab);
+    document.getElementById("f-clear").style.visibility = (s[curTab]) ? "visible" : "hidden";
+  }
+
+  function openEditor(n) {
+    curN = n;
+    var s = data[n] || {};
+    curTab = (s.guest || (s.busy && !s.owner)) ? "guest" : "owner";
+    document.getElementById("dlg-title").textContent = "Estacionamiento " + n;
+    fillFields();
+    dlg.showModal();
+    fName.focus();
+  }
+
+  tabs.addEventListener("click", function (e) {
+    var t = e.target.getAttribute("data-t");
+    if (!t) return;
+    curTab = t; fillFields(); fName.focus();
+  });
+
+  daysBox.addEventListener("click", function (e) {
+    var d = e.target.getAttribute("data-d");
+    if (d === null) return;
+    d = parseInt(d, 10);
+    var i = curDays.indexOf(d);
+    if (i === -1) curDays.push(d); else curDays.splice(i, 1);
+    paintDays();
+  });
+
+  fPlate.addEventListener("input", function () {
+    var pos = fPlate.selectionStart, atEnd = pos >= fPlate.value.length;
+    fPlate.value = normPlate(fPlate.value);   // agrega el guion solo: ABCD-12 / ABC-12
+    var p = atEnd ? fPlate.value.length : Math.min(pos, fPlate.value.length);
+    try { fPlate.setSelectionRange(p, p); } catch (e) {}
+  });
+  fPhone.addEventListener("input", function () { fPhone.value = fPhone.value.replace(/[^\d+\s]/g, ""); });
+
+  document.getElementById("form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var name = fName.value.trim(), plate = normPlate(fPlate.value), phone = normPhone(fPhone.value);
+    var s = sp(curN);
+    if (!name && !plate && !phone) { delete s[curTab]; }
+    else if (curTab === "owner") {
+      var days = curDays.length >= 7 ? [] : sortDays(curDays);
+      s.owner = { name: name, plate: plate, phone: phone, days: days };
+    } else {
+      s.guest = { name: name, plate: plate, phone: phone };
+      s.busy = true;   // asignar una visita marca ocupado
+    }
+    save(); render(); dlg.close();
+  });
+
+  document.getElementById("f-clear").addEventListener("click", function () {
+    var s = sp(curN);
+    delete s[curTab];
+    if (curTab === "guest") s.busy = false;
+    save(); render(); dlg.close();
+  });
+  document.getElementById("f-cancel").addEventListener("click", function () { dlg.close(); });
+  dlg.addEventListener("click", function (e) { if (e.target === dlg) dlg.close(); });
+
+  // ---- búsqueda y filtros ----
+  document.getElementById("search").addEventListener("input", function () { query = this.value.trim(); render(); });
+  document.getElementById("filters").addEventListener("click", function (e) {
+    var f = e.target.getAttribute("data-f");
+    if (!f) return;
+    filter = f;
+    var btns = this.querySelectorAll("button");
+    for (var i = 0; i < btns.length; i++) btns[i].classList.toggle("on", btns[i] === e.target);
+    render();
+  });
+
+  // ---- alertas (SweetAlert2) ----
+  function themeOpts() {
+    var cs = getComputedStyle(document.documentElement);
+    return {
+      background: cs.getPropertyValue("--surface").trim() || "#ffffff",
+      color: cs.getPropertyValue("--text").trim() || "#1b2333"
+    };
+  }
+  function fire(opts) {
+    var t = themeOpts();
+    opts.background = t.background;
+    opts.color = t.color;
+    return Swal.fire(opts);
+  }
+  function ask(title, text, okText, danger) {
+    if (!window.Swal) return Promise.resolve(confirm(title + "\n" + text));
+    return fire({
+      title: title, text: text, icon: "question",
+      showCancelButton: true, confirmButtonText: okText, cancelButtonText: "Cancelar",
+      reverseButtons: true, focusCancel: true,
+      confirmButtonColor: danger ? "#dc2626" : "#3b5bdb"
+    }).then(function (r) { return r.isConfirmed; });
+  }
+  function tell(title, text, icon) {
+    if (!window.Swal) { alert(title + (text ? "\n" + text : "")); return; }
+    fire({ title: title, text: text, icon: icon || "info", confirmButtonText: "Entendido", confirmButtonColor: "#3b5bdb" });
+  }
+  function toast(title, icon) {
+    if (!window.Swal) return;
+    fire({ toast: true, position: "top-end", icon: icon || "success", title: title, showConfirmButton: false, timer: 2500, timerProgressBar: true });
+  }
+
+  // ---- acciones generales ----
+  document.getElementById("btn-free-all").addEventListener("click", function () {
+    ask("¿Liberar todos los estacionamientos?", "Los titulares fijos se mantienen y las visitas se borran.", "Sí, liberar", true).then(function (ok) {
+      if (!ok) return;
+      for (var k in data) { data[k].busy = false; delete data[k].guest; }
+      save(); render();
+      toast("Estacionamientos liberados");
+    });
+  });
+
+  function needXlsx() {
+    if (window.XLSX) return false;
+    tell("No se pudo cargar Excel", "El componente necesita conexión a internet. Revisa la conexión y recarga la página.", "warning");
+    return true;
+  }
+
+  document.getElementById("btn-export").addEventListener("click", function () {
+    if (needXlsx()) return;
+    var rows = [["Espacio", "Titular fijo", "Patente titular", "Celular titular", "Días asignados", "Estado", "Visita", "Patente visita", "Celular visita"]];
+    for (var n = 1; n <= TOTAL; n++) {
+      var s = data[n] || {}, o = s.owner || {}, g = s.guest || {};
+      rows.push([
+        n, o.name || "", normPlate(o.plate), o.phone || "",
+        o.days && o.days.length ? daysText(o.days) : (s.owner ? "Todos" : ""),
+        s.busy ? "Ocupado" : "Libre",
+        g.name || "", normPlate(g.plate), g.phone || ""
+      ]);
+    }
+    var ws = XLSX.utils.aoa_to_sheet(rows);
+    ws["!cols"] = [{ wch: 9 }, { wch: 28 }, { wch: 16 }, { wch: 18 }, { wch: 26 }, { wch: 10 }, { wch: 28 }, { wch: 16 }, { wch: 18 }];
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Estacionamientos");
+    var d = new Date(), p = function (x) { return String(x).padStart(2, "0"); };
+    XLSX.writeFile(wb, "estacionamientos-" + d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate()) + ".xlsx");
+  });
+
+  var fileIn = document.getElementById("file-import");
+  document.getElementById("btn-import").addEventListener("click", function () {
+    if (needXlsx()) return;
+    fileIn.click();
+  });
+  function cell(row, key) { return row[key] == null ? "" : String(row[key]).trim(); }
+  fileIn.addEventListener("change", function () {
+    var f = fileIn.files[0];
+    if (!f) return;
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        var wb = XLSX.read(r.result, { type: "array" });
+        var ws = wb.Sheets[wb.SheetNames[0]];
+        var rows = XLSX.utils.sheet_to_json(ws, { defval: "" });
+        if (!rows.length || !("Espacio" in rows[0])) throw new Error("formato");
+        var next = {}, count = 0;
+        rows.forEach(function (row) {
+          var n = parseInt(row["Espacio"], 10);
+          if (!(n >= 1 && n <= TOTAL)) return;
+          var s = {};
+          var on = cell(row, "Titular fijo"), op = normPlate(cell(row, "Patente titular")), oc = normPhone(cell(row, "Celular titular"));
+          var gn = cell(row, "Visita"), gp = normPlate(cell(row, "Patente visita")), gc = normPhone(cell(row, "Celular visita"));
+          var st = cell(row, "Estado").toLowerCase();
+          if (on || op || oc) s.owner = { name: on, plate: op, phone: oc, days: parseDays(cell(row, "Días asignados")) };
+          if (gn || gp || gc) { s.guest = { name: gn, plate: gp, phone: gc }; s.busy = true; }
+          else s.busy = (st === "ocupado");
+          if (s.busy || s.owner || s.guest) { next[n] = s; count++; }
+        });
+        ask("¿Importar datos?", "Esto reemplaza los datos actuales por los del Excel (" + count + " espacios con datos).", "Sí, importar", true).then(function (ok) {
+          if (!ok) return;
+          data = next; save(); render();
+          toast("Datos importados");
+        });
+      } catch (err) { tell("Archivo no válido", "El archivo no tiene el formato esperado. Usa un Excel exportado desde esta página.", "error"); }
+      fileIn.value = "";
+    };
+    r.readAsArrayBuffer(f);
+  });
+
+  // ---- tema claro / oscuro ----
+  var themeBtn = document.getElementById("btn-theme");
+  var root = document.documentElement;
+  function currentTheme() {
+    var t = root.getAttribute("data-theme");
+    if (t) return t;
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+  function paintThemeBtn() {
+    themeBtn.textContent = currentTheme() === "dark" ? "☀ Modo claro" : "☾ Modo oscuro";
+  }
+  themeBtn.addEventListener("click", function () {
+    var next = currentTheme() === "dark" ? "light" : "dark";
+    root.setAttribute("data-theme", next);
+    try { localStorage.setItem("estacionamientos_tema", next); } catch (e) {}
+    paintThemeBtn();
+  });
+  paintThemeBtn();
+
+  // pedir al navegador que no borre estos datos automáticamente
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+
+  render();
+  // si la página queda abierta, se actualiza sola al cambiar el día
+  setInterval(render, 60000);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) render(); });
+})();
+</script>
+</body>
+</html>
